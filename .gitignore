@@ -7,3 +7,9 @@ wol_devices.json
 /fpk_old/
 /fpk_test/
 oui.csv
+fpk-extract/
+fan-extract/
+fan-app-extract/
+app-extract/
+fn-wol-test.fpk
+fan-control.fpk
