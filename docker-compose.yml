@@ -1,0 +1,10 @@
+version: "3"
+services:
+  fn-wol:
+    build: .
+    image: fn-wol:latest
+    container_name: fn-wol
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      - ./data:/data

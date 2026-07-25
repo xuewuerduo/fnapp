@@ -1,0 +1,7 @@
+target/
+*.exe
+wol_devices.json
+data/
+.git/
+.github/
+.cargo/
