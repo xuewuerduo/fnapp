@@ -70,10 +70,10 @@ jobs:
       - name: Build .fpk
         run: |
           /tmp/fnpack build --directory fnos-pack
-
-      - name: Rename .fpk
-        run: |
-          mv fn-wol.fpk fn-wol-${{ matrix.arch }}.fpk
+          echo "=== 列出当前目录 ==="
+          ls -la
+          echo "=== 列出 fnos-pack 目录 ==="
+          ls -la fnos-pack/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
