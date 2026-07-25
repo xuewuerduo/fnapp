@@ -1,0 +1,88 @@
+#!/bin/bash
+LOG_FILE="${TRIM_PKGVAR}/app.log"
+PID_FILE="${TRIM_PKGVAR}/app.pid"
+BINARY="${TRIM_APPDEST}/bin/fn-wol"
+
+log_msg() {
+  echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+}
+
+check_process() {
+  local pid="$1"
+  kill -0 "$pid" 2>/dev/null
+}
+
+status_app() {
+  if [ -f "$PID_FILE" ]; then
+    local pid
+    pid="$(head -n 1 "$PID_FILE" | tr -d '[:space:]')"
+    if [ -n "$pid" ] && check_process "$pid"; then
+      return 0
+    fi
+    rm -f "$PID_FILE"
+  fi
+  return 1
+}
+
+start_app() {
+  if status_app; then
+    return 0
+  fi
+  log_msg "启动 WOL 远程唤醒..."
+  cd "$TRIM_PKGVAR" || { log_msg "无法进入数据目录 $TRIM_PKGVAR"; exit 1; }
+  export DATA_DIR="$TRIM_PKGVAR"
+  export TRIM_SERVICE_PORT="$wizard_port"
+  "$BINARY" >> "$LOG_FILE" 2>&1 &
+  echo "$!" > "$PID_FILE"
+  log_msg "已启动，PID: $(cat $PID_FILE)"
+  sleep 1
+  if ! status_app; then
+    log_msg "启动失败，请检查日志"
+    exit 1
+  fi
+}
+
+stop_app() {
+  log_msg "停止 WOL 远程唤醒..."
+  if [ ! -f "$PID_FILE" ]; then
+    return 0
+  fi
+  local pid
+  pid="$(head -n 1 "$PID_FILE" | tr -d '[:space:]')"
+  if [ -z "$pid" ] || ! check_process "$pid"; then
+    rm -f "$PID_FILE"
+    return 0
+  fi
+  kill -TERM "$pid" 2>> "$LOG_FILE" || true
+  local count=0
+  while check_process "$pid" && [ "$count" -lt 10 ]; do
+    sleep 1
+    count=$((count + 1))
+  done
+  if check_process "$pid"; then
+    kill -KILL "$pid" 2>> "$LOG_FILE" || true
+  fi
+  rm -f "$PID_FILE"
+  log_msg "已停止"
+}
+
+case "$1" in
+  start)
+    start_app
+    exit $?
+    ;;
+  stop)
+    stop_app
+    exit $?
+    ;;
+  status)
+    if status_app; then
+      exit 0
+    fi
+    exit 3
+    ;;
+  *)
+    echo "用法: $0 {start|stop|status}" > "$TRIM_TEMP_LOGFILE"
+    exit 1
+    ;;
+esac

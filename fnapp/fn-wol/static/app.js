@@ -161,7 +161,13 @@ function fetchVendorAsync(mac, callback) {
     fetch('/api/vendor?mac=' + encodeURIComponent(mac))
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            if (callback) callback(data.vendor || null);
+            if (!callback) return;
+            var v = data.vendor;
+            if (v && !v.startsWith('{') && !v.startsWith('[') && v.length < 100) {
+                callback(v);
+            } else {
+                callback(null);
+            }
         })
         .catch(function() { if (callback) callback(null); });
 }

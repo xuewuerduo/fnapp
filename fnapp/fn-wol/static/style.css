@@ -396,7 +396,7 @@ header h1 {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 120px;
+    max-width: 280px;
     flex-shrink: 0;
 }
 

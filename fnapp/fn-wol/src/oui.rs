@@ -123,7 +123,12 @@ fn query_online(prefix: &str) -> Option<String> {
     }
 
     let vendor = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if vendor.is_empty() || vendor.contains("Not Found") || vendor.contains("rate limit") {
+    if vendor.is_empty()
+        || vendor.contains("Not Found")
+        || vendor.contains("rate limit")
+        || vendor.starts_with('{')
+        || vendor.starts_with('[')
+    {
         None
     } else {
         Some(vendor)
