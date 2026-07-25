@@ -33,8 +33,12 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-zigbuild
+
       - name: Build Rust binary
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo zigbuild --release --target ${{ matrix.target }}
 
       - name: Setup fnOS pack dir
         run: |
