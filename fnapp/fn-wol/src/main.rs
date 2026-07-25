@@ -24,6 +24,14 @@ fn main() {
     let data_path = Path::new(&data_dir).join("wol_devices.json");
     let data_path_str = data_path.to_str().unwrap_or("wol_devices.json");
 
+    let oui_path = std::env::var("OUI_DB").ok().or_else(|| {
+        Path::new(&data_dir)
+            .join("oui.csv")
+            .to_str()
+            .map(|s| s.to_string())
+    });
+    oui::init(oui_path.as_deref());
+
     let store = Arc::new(Mutex::new(DeviceStore::new(data_path_str)));
 
     eprintln!("飞牛 WOL 远程唤醒工具");

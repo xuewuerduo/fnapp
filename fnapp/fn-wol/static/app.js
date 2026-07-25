@@ -36,12 +36,11 @@ function renderDevices(devices) {
     }
 
     list.innerHTML = devices.map(function(d) {
-        const vendorHtml = d.vendor ? `<span class="device-vendor">${escapeHtml(d.vendor)}</span>` : '';
         return `
         <div class="device-card" data-mac="${escapeAttr(d.mac)}">
             <div class="device-header">
                 <div class="device-name" onclick="editName('${escapeAttr(d.mac)}', this)">${escapeHtml(d.name || '未命名')}</div>
-                ${vendorHtml}
+                ${d.vendor ? vendorBadge(d.vendor) : ''}
             </div>
             <div class="device-info">
                 <div class="device-info-row">
@@ -100,7 +99,6 @@ function showScanResults(devices) {
     } else {
         count.textContent = devices.length;
         list.innerHTML = devices.map(function(d) {
-            const vendorHtml = d.vendor ? `<span class="device-vendor">${escapeHtml(d.vendor)}</span>` : '';
             const btnHtml = d.exists
                 ? '<span class="scan-added">已添加</span>'
                 : `<button class="btn-wake" onclick="addScannedDevice('${escapeAttr(d.mac)}', '${escapeAttr(d.ip)}', this)"><span>+ 添加</span></button>`;
@@ -109,7 +107,7 @@ function showScanResults(devices) {
                 <div class="scan-device-info">
                     <div class="scan-device-mac">${escapeHtml(d.mac)}</div>
                     <div class="scan-device-ip">${escapeHtml(d.ip)}</div>
-                    ${vendorHtml}
+                    ${d.vendor ? vendorBadge(d.vendor) : ''}
                 </div>
                 <div class="scan-device-action">${btnHtml}</div>
             </div>
@@ -294,6 +292,14 @@ function showToast(msg, type) {
     toast._timer = setTimeout(function() {
         toast.className = 'toast';
     }, 2500);
+}
+
+function vendorBadge(name) {
+    var short = name.split(/[,.\s]+/)[0].substring(0, 2).toUpperCase();
+    var h = 0;
+    for (var i = 0; i < name.length; i++) { h = name.charCodeAt(i) + ((h << 5) - h); }
+    var bg = 'hsl(' + (h % 360) + ', 45%, 55%)';
+    return '<span class="vendor-badge" style="background:' + bg + '">' + short + '</span>';
 }
 
 function escapeHtml(str) {
