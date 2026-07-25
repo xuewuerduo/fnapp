@@ -67,6 +67,25 @@ function renderDevices(devices) {
         </div>
         `;
     }).join('');
+
+    // 异步补充厂商信息
+    devices.forEach(function(d) {
+        if (!d.vendor) {
+            fetchVendorAsync(d.mac, function(vendor) {
+                if (!vendor) return;
+                var cards = document.querySelectorAll('#deviceList .device-card');
+                for (var i = 0; i < cards.length; i++) {
+                    if (cards[i].dataset.mac === d.mac) {
+                        var h = cards[i].querySelector('.device-header');
+                        if (h && !h.querySelector('.vendor-name')) {
+                            h.insertAdjacentHTML('beforeend', vendorBadge(vendor));
+                        }
+                        break;
+                    }
+                }
+            });
+        }
+    });
 }
 
 async function scanDevices() {
@@ -116,6 +135,35 @@ function showScanResults(devices) {
     }
 
     modal.style.display = 'flex';
+
+    devices.forEach(function(d) {
+        if (!d.vendor) {
+            fetchVendorAsync(d.mac, function(vendor) {
+                var el = document.querySelector('#scanResultList .scan-device-mac');
+                if (el) {
+                    var rows = document.querySelectorAll('#scanResultList .scan-device');
+                    for (var i = 0; i < rows.length; i++) {
+                        if (rows[i].querySelector('.scan-device-mac').textContent === d.mac) {
+                            var info = rows[i].querySelector('.scan-device-info');
+                            if (vendor) {
+                                info.insertAdjacentHTML('beforeend', vendorBadge(vendor));
+                            }
+                            break;
+                        }
+                    }
+                }
+            });
+        }
+    });
+}
+
+function fetchVendorAsync(mac, callback) {
+    fetch('/api/vendor?mac=' + encodeURIComponent(mac))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (callback) callback(data.vendor || null);
+        })
+        .catch(function() { if (callback) callback(null); });
 }
 
 function closeScanModal() {
@@ -295,11 +343,9 @@ function showToast(msg, type) {
 }
 
 function vendorBadge(name) {
-    var short = name.split(/[,.\s]+/)[0].substring(0, 2).toUpperCase();
     var h = 0;
     for (var i = 0; i < name.length; i++) { h = name.charCodeAt(i) + ((h << 5) - h); }
-    var bg = 'hsl(' + (h % 360) + ', 45%, 55%)';
-    return '<span class="vendor-badge" style="background:' + bg + '">' + short + '</span>';
+    return '<span class="vendor-name" style="background:hsl(' + (h % 360) + ', 40%, 55%)">' + escapeHtml(name) + '</span>';
 }
 
 function escapeHtml(str) {

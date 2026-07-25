@@ -11,7 +11,7 @@ pub struct ScanResult {
 }
 
 fn vendor_for(mac: &str) -> Option<String> {
-    oui::lookup_vendor(mac).map(|s| s.to_string())
+    oui::lookup_vendor_local(mac).map(|s| s.to_string())
 }
 
 /// 扫描局域网在线设备

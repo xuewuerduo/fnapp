@@ -1,22 +1,16 @@
-# OUI 厂商数据库生成脚本
-# 从 IEEE 官方 OUI 列表提取 MAC 前缀与厂商名称
-# 产物: oui.csv（约 40K 条，1.2MB）
-# 使用方法: .\data\generate-oui.ps1
-# 输出: data\oui.csv（覆盖）
-
 $url = "https://standards-oui.ieee.org/oui/oui.csv"
 $output = Join-Path $PSScriptRoot "oui.csv"
 
-Write-Host "正在下载 IEEE OUI 列表..." -ForegroundColor Cyan
+Write-Host "Downloading IEEE OUI list..." -ForegroundColor Cyan
 try {
     $ProgressPreference = "SilentlyContinue"
     $raw = [System.Net.WebClient]::new().DownloadString($url)
 } catch {
-    Write-Host "下载失败: $_" -ForegroundColor Red
+    Write-Host "Download failed: $_" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "正在解析..." -ForegroundColor Cyan
+Write-Host "Parsing..." -ForegroundColor Cyan
 $builder = New-Object System.Text.StringBuilder
 $total = 0
 
@@ -38,9 +32,12 @@ foreach ($line in $raw -split "`n") {
         $vendor = $line.Substring($vendorStart, $end - $vendorStart)
     }
 
+    if ($vendor -match ',') {
+        $vendor = '"' + $vendor + '"'
+    }
     $null = $builder.AppendLine("$prefix,$vendor")
     $total++
 }
 
 [System.IO.File]::WriteAllText($output, $builder.ToString())
-Write-Host "完成！共 $total 条记录，输出到 $output" -ForegroundColor Green
+Write-Host "Done! $total records written to $output" -ForegroundColor Green

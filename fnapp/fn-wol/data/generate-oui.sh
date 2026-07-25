@@ -1,20 +1,29 @@
 #!/bin/bash
-# OUI 厂商数据库生成脚本（Linux / macOS）
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OUTPUT="$SCRIPT_DIR/oui.csv"
 URL="https://standards-oui.ieee.org/oui/oui.csv"
 
-echo "正在下载 IEEE OUI 列表..."
+echo "下载 IEEE OUI 列表..."
 curl -fL "$URL" -o /tmp/oui_raw.csv
 
-echo "正在解析..."
-awk -F',' '
-  NR > 1 && length($2) == 6 {
-    gsub(/^"|"$/, "", $3)
-    print $2 "," $3
-  }
-' /tmp/oui_raw.csv > "$OUTPUT"
+echo "解析中..."
+python3 -c "
+import csv, sys
+with open('/tmp/oui_raw.csv') as f:
+    r = csv.reader(f)
+    next(r)  # skip header
+    for row in r:
+        if len(row) >= 3 and len(row[1]) == 6:
+            prefix = row[1]
+            vendor = row[2].strip().strip('\"').strip()
+            if vendor:
+                # quote if contains comma
+                if ',' in vendor:
+                    print(f'{prefix},\"{vendor}\"')
+                else:
+                    print(f'{prefix},{vendor}')
+" > "$OUTPUT"
 
 TOTAL=$(wc -l < "$OUTPUT")
-echo "完成！共 $TOTAL 条记录，输出到 $OUTPUT"
+echo "OK! $TOTAL records -> $OUTPUT"

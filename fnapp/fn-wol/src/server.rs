@@ -57,8 +57,9 @@ fn url_decode(s: &str) -> String {
     String::from_utf8(result).unwrap_or_else(|_| s.to_string())
 }
 
+use std::time::{SystemTime, UNIX_EPOCH};
+
 fn current_time() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs().to_string())
@@ -179,6 +180,14 @@ fn handle_request(mut request: tiny_http::Request, store: &Arc<Mutex<DeviceStore
                 let _ = request.respond(json_response(500, &format!(r#"{{"error":"{}"}}"#, e)));
             }
         },
+
+        ("GET", _) if path.starts_with("/api/vendor") => {
+            let mac = url.split('?').nth(1).unwrap_or("")
+                .split('&').find_map(|p| p.strip_prefix("mac=")).unwrap_or("");
+            let vendor = crate::oui::lookup_vendor(&mac);
+            let json = serde_json::json!({ "vendor": vendor }).to_string();
+            let _ = request.respond(json_response(200, &json));
+        }
 
         _ if path.starts_with("/api/devices/") => {
             let suffix = &path["/api/devices/".len()..];

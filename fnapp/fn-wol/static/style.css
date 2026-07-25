@@ -387,18 +387,17 @@ header h1 {
     background: var(--card);
 }
 
-.vendor-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    color: #fff;
+.vendor-name {
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 500;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
     flex-shrink: 0;
-    letter-spacing: 0.5px;
 }
 
 .modal-scan {
