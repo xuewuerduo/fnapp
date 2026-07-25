@@ -27,7 +27,7 @@
         "type": "switch",
         "field": "wizard_oui",
         "label": "下载厂商识别数据库",
-        "initValue": false,
+        "initValue": "false",
         "description": "安装后自动下载 IEEE OUI 厂商数据库（约 1.2MB），扫描设备时显示品牌信息。不下载则仅通过联网查询（需设备可访问外网）。"
       }
     ]
