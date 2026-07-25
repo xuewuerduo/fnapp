@@ -2,11 +2,15 @@ name: Build
 
 on:
   push:
-    tags: ['v*']
+    tags: ['fn-wol-v*']
   workflow_dispatch:
 
 permissions:
   contents: write
+
+defaults:
+  run:
+    working-directory: fnapp/fn-wol
 
 jobs:
   build:
@@ -59,10 +63,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: fn-wol-${{ matrix.arch }}
-          path: fn-wol-${{ matrix.arch }}.fpk
+          path: fnapp/fn-wol/fn-wol-${{ matrix.arch }}.fpk
 
       - name: Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: fn-wol-${{ matrix.arch }}.fpk
+          files: fnapp/fn-wol/fn-wol-${{ matrix.arch }}.fpk
