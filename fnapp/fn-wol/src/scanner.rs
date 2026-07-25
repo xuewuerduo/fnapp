@@ -2,10 +2,16 @@ use std::net::UdpSocket;
 use std::time::Duration;
 
 use crate::network::{get_local_network, get_scan_range};
+use crate::oui;
 
 pub struct ScanResult {
     pub ip: String,
     pub mac: String,
+    pub vendor: Option<String>,
+}
+
+fn vendor_for(mac: &str) -> Option<String> {
+    oui::lookup_vendor(mac).map(|s| s.to_string())
 }
 
 /// 扫描局域网在线设备
@@ -79,9 +85,11 @@ fn read_arp_table() -> Result<Vec<ScanResult>, String> {
             continue;
         }
         if mac_addr.contains(':') {
+            let mac = mac_addr.to_lowercase();
             results.push(ScanResult {
                 ip: ip_addr.to_string(),
-                mac: mac_addr.to_lowercase(),
+                mac: mac.clone(),
+                vendor: vendor_for(&mac),
             });
         }
     }
@@ -103,13 +111,10 @@ fn read_arp_table() -> Result<Vec<ScanResult>, String> {
     let mut results = Vec::new();
     for line in content.lines() {
         let fields: Vec<&str> = line.split_whitespace().collect();
-        // Windows arp -a 格式: IP  MAC  Type
-        // 例如: 192.168.1.1    aa-bb-cc-dd-ee-ff    dynamic
         if fields.len() >= 2 {
             let ip_addr = fields[0];
             let mac_addr = fields[1];
 
-            // 检查是否是有效的 MAC（xx-xx-xx-xx-xx-xx 格式，17 字符）
             if mac_addr.contains('-') && mac_addr.len() == 17 {
                 let mac_normalized = mac_addr.to_lowercase().replace('-', ":");
                 if mac_normalized != "00:00:00:00:00:00"
@@ -117,7 +122,8 @@ fn read_arp_table() -> Result<Vec<ScanResult>, String> {
                 {
                     results.push(ScanResult {
                         ip: ip_addr.to_string(),
-                        mac: mac_normalized,
+                        mac: mac_normalized.clone(),
+                        vendor: vendor_for(&mac_normalized),
                     });
                 }
             }

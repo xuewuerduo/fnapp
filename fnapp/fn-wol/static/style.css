@@ -387,6 +387,81 @@ header h1 {
     background: var(--card);
 }
 
+.device-vendor {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--primary);
+    background: #eef1ff;
+    padding: 2px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+
+.modal-scan {
+    max-height: 70vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.scan-result-list {
+    flex: 1;
+    overflow-y: auto;
+    margin: 0 -20px;
+    padding: 0 20px;
+}
+
+.scan-device {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+}
+
+.scan-device:last-child {
+    border-bottom: none;
+}
+
+.scan-device-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.scan-device-mac {
+    font-size: 14px;
+    font-weight: 600;
+    font-family: "SF Mono", "Cascadia Code", "Consolas", monospace;
+    width: 100%;
+}
+
+.scan-device-ip {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.scan-device-action {
+    flex-shrink: 0;
+}
+
+.scan-device-action .btn-wake {
+    flex: none;
+    height: 36px;
+    padding: 0 14px;
+    font-size: 13px;
+}
+
+.scan-added {
+    font-size: 13px;
+    color: var(--success);
+    font-weight: 500;
+    padding: 0 14px;
+}
+
 @media (min-width: 640px) {
     .modal-overlay {
         align-items: center;

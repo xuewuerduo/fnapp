@@ -63,6 +63,16 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="scanModal" style="display:none;">
+        <div class="modal modal-scan">
+            <h2>扫描结果 <span class="count" id="scanCount">0</span></h2>
+            <div class="scan-result-list" id="scanResultList"></div>
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="closeScanModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
     <div class="toast" id="toast"></div>
     <script src="/app.js"></script>
 </body>

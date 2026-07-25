@@ -120,10 +120,12 @@ fn handle_request(mut request: tiny_http::Request, store: &Arc<Mutex<DeviceStore
             match serde_json::from_str::<AddRequest>(&body) {
                 Ok(req) => match mac::normalize_mac(&req.mac) {
                     Some(normalized) => {
+                        let vendor = crate::oui::lookup_vendor(&normalized).map(|s| s.to_string());
                         let device = Device {
                             mac: normalized,
                             ip: req.ip.filter(|s| !s.is_empty()),
                             name: req.name,
+                            vendor,
                             last_seen: None,
                         };
                         let mut store = store.lock().unwrap();
@@ -147,25 +149,27 @@ fn handle_request(mut request: tiny_http::Request, store: &Arc<Mutex<DeviceStore
         ("POST", "/api/scan") => match scanner::scan_network() {
             Ok(results) => {
                 let now = current_time();
-                let scan_count = results.len();
                 let mut store = store.lock().unwrap();
-                for r in &results {
-                    let device = Device {
-                        mac: r.mac.clone(),
-                        ip: Some(r.ip.clone()),
-                        name: String::new(),
-                        last_seen: Some(now.clone()),
-                    };
-                    store.upsert(device);
-                }
+
+                let devices_json: Vec<_> = results.iter().map(|r| {
+                    let exists = store.exists(&r.mac);
+                    // 已收藏的设备更新 IP 和在线时间
+                    if exists {
+                        store.update_existing(&r.mac, &r.ip, &now);
+                    }
+                    serde_json::json!({
+                        "ip": r.ip,
+                        "mac": r.mac,
+                        "vendor": r.vendor,
+                        "exists": exists
+                    })
+                }).collect();
                 let _ = store.save();
 
                 let json = serde_json::json!({
                     "ok": true,
-                    "count": scan_count,
-                    "devices": results.iter().map(|r| {
-                        serde_json::json!({ "ip": r.ip, "mac": r.mac })
-                    }).collect::<Vec<_>>()
+                    "count": results.len(),
+                    "devices": devices_json
                 })
                 .to_string();
 

@@ -5,6 +5,9 @@ document.addEventListener('DOMContentLoaded', loadDevices);
 document.getElementById('addModal').addEventListener('click', function(e) {
     if (e.target === this) closeAddModal();
 });
+document.getElementById('scanModal').addEventListener('click', function(e) {
+    if (e.target === this) closeScanModal();
+});
 
 async function loadDevices() {
     try {
@@ -25,7 +28,7 @@ function renderDevices(devices) {
         list.innerHTML = `
             <div class="empty-state">
                 <div class="empty-icon">📡</div>
-                <p>暂无设备</p>
+                <p>暂无常用设备</p>
                 <p class="hint">扫描局域网或手动添加设备</p>
             </div>
         `;
@@ -33,10 +36,12 @@ function renderDevices(devices) {
     }
 
     list.innerHTML = devices.map(function(d) {
+        const vendorHtml = d.vendor ? `<span class="device-vendor">${escapeHtml(d.vendor)}</span>` : '';
         return `
         <div class="device-card" data-mac="${escapeAttr(d.mac)}">
             <div class="device-header">
-                <div class="device-name" onclick="editName('${escapeAttr(d.mac)}', this)">${escapeHtml(d.name || '')}</div>
+                <div class="device-name" onclick="editName('${escapeAttr(d.mac)}', this)">${escapeHtml(d.name || '未命名')}</div>
+                ${vendorHtml}
             </div>
             <div class="device-info">
                 <div class="device-info-row">
@@ -67,8 +72,6 @@ function renderDevices(devices) {
 
 async function scanDevices() {
     const btn = document.getElementById('scanBtn');
-    const original = btn.innerHTML;
-    btn.innerHTML = '<span class="loading"></span><span>扫描中...</span>';
     btn.disabled = true;
 
     try {
@@ -76,17 +79,76 @@ async function scanDevices() {
         const data = await res.json();
 
         if (res.ok) {
-            const count = data.count !== undefined ? data.count : (data.devices || []).length;
-            showToast('扫描完成，发现 ' + count + ' 台设备', 'success');
-            loadDevices();
+            showScanResults(data.devices || []);
         } else {
             showToast(data.error || '扫描失败', 'error');
         }
     } catch (e) {
         showToast('扫描失败，请检查网络', 'error');
     } finally {
-        btn.innerHTML = original;
         btn.disabled = false;
+    }
+}
+
+function showScanResults(devices) {
+    const modal = document.getElementById('scanModal');
+    const list = document.getElementById('scanResultList');
+    const count = document.getElementById('scanCount');
+
+    if (devices.length === 0) {
+        list.innerHTML = '<div class="empty-state"><p>未发现新设备</p></div>';
+    } else {
+        count.textContent = devices.length;
+        list.innerHTML = devices.map(function(d) {
+            const vendorHtml = d.vendor ? `<span class="device-vendor">${escapeHtml(d.vendor)}</span>` : '';
+            const btnHtml = d.exists
+                ? '<span class="scan-added">已添加</span>'
+                : `<button class="btn-wake" onclick="addScannedDevice('${escapeAttr(d.mac)}', '${escapeAttr(d.ip)}', this)"><span>+ 添加</span></button>`;
+            return `
+            <div class="scan-device">
+                <div class="scan-device-info">
+                    <div class="scan-device-mac">${escapeHtml(d.mac)}</div>
+                    <div class="scan-device-ip">${escapeHtml(d.ip)}</div>
+                    ${vendorHtml}
+                </div>
+                <div class="scan-device-action">${btnHtml}</div>
+            </div>
+            `;
+        }).join('');
+    }
+
+    modal.style.display = 'flex';
+}
+
+function closeScanModal() {
+    document.getElementById('scanModal').style.display = 'none';
+}
+
+async function addScannedDevice(mac, ip, btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading"></span>';
+
+    try {
+        const res = await fetch(`${API}/devices`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mac: mac, name: mac, ip: ip })
+        });
+
+        if (res.ok) {
+            showToast('设备已添加', 'success');
+            btn.outerHTML = '<span class="scan-added">已添加</span>';
+            loadDevices();
+        } else {
+            const data = await res.json();
+            showToast(data.error || '添加失败', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '+ 添加';
+        }
+    } catch (e) {
+        showToast('添加失败', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '+ 添加';
     }
 }
 

@@ -1,3 +1,4 @@
 /target
+fnapp/*/target/
 wol_devices.json
 *.exe

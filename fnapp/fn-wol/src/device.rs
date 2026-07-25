@@ -7,6 +7,7 @@ pub struct Device {
     pub mac: String,
     pub ip: Option<String>,
     pub name: String,
+    pub vendor: Option<String>,
     pub last_seen: Option<String>,
 }
 
@@ -54,14 +55,20 @@ impl DeviceStore {
         true
     }
 
-    /// 更新或添加设备（扫描时使用），MAC 已存在则更新 IP/last_seen
-    pub fn upsert(&mut self, device: Device) {
-        if let Some(existing) = self.devices.iter_mut().find(|d| d.mac == device.mac) {
-            existing.ip = device.ip;
-            existing.last_seen = device.last_seen;
+    /// 更新已存在设备的 IP 和 last_seen，不添加新设备
+    pub fn update_existing(&mut self, mac: &str, ip: &str, last_seen: &str) -> bool {
+        if let Some(existing) = self.devices.iter_mut().find(|d| d.mac == mac) {
+            existing.ip = Some(ip.to_string());
+            existing.last_seen = Some(last_seen.to_string());
+            true
         } else {
-            self.devices.push(device);
+            false
         }
+    }
+
+    /// 检查设备是否存在
+    pub fn exists(&self, mac: &str) -> bool {
+        self.devices.iter().any(|d| d.mac == mac)
     }
 
     pub fn update_name(&mut self, mac: &str, name: &str) -> bool {

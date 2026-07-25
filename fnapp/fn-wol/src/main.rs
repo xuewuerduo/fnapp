@@ -4,6 +4,7 @@ mod device;
 mod network;
 mod scanner;
 mod server;
+mod oui;
 
 use std::path::Path;
 use std::sync::{Arc, Mutex};
