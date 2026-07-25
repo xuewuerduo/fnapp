@@ -10,10 +10,20 @@
 <body>
     <div class="container">
         <header>
-            <div class="logo">⚡</div>
-            <h1>远程唤醒</h1>
-            <p class="subtitle">局域网设备管理</p>
+            <h1>WOL 远程唤醒</h1>
         </header>
+
+        <div class="section-title">
+            <span>我的设备</span>
+            <span class="count" id="deviceCount">0</span>
+        </div>
+
+        <div class="device-list" id="deviceList">
+            <div class="empty-state">
+                <p>暂无设备</p>
+                <p class="hint">扫描局域网或手动添加设备</p>
+            </div>
+        </div>
 
         <div class="actions">
             <button class="btn btn-primary" id="scanBtn" onclick="scanDevices()">
@@ -24,19 +34,6 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
                 <span>手动添加</span>
             </button>
-        </div>
-
-        <div class="section-title">
-            <span>设备列表</span>
-            <span class="count" id="deviceCount">0</span>
-        </div>
-
-        <div class="device-list" id="deviceList">
-            <div class="empty-state">
-                <div class="empty-icon">📡</div>
-                <p>暂无设备</p>
-                <p class="hint">扫描局域网或手动添加设备</p>
-            </div>
         </div>
     </div>
 

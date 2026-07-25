@@ -27,8 +27,7 @@ function renderDevices(devices) {
     if (devices.length === 0) {
         list.innerHTML = `
             <div class="empty-state">
-                <div class="empty-icon">📡</div>
-                <p>暂无常用设备</p>
+                <p>暂无设备</p>
                 <p class="hint">扫描局域网或手动添加设备</p>
             </div>
         `;
@@ -36,11 +35,15 @@ function renderDevices(devices) {
     }
 
     list.innerHTML = devices.map(function(d) {
+        var statusHtml = d.online
+            ? '<span class="status-badge status-online">在线</span>'
+            : '<span class="status-badge status-offline">离线</span>';
         return `
         <div class="device-card" data-mac="${escapeAttr(d.mac)}">
             <div class="device-header">
-                <div class="device-name" onclick="editName('${escapeAttr(d.mac)}', this)">${escapeHtml(d.name || '未命名')}</div>
+                <div class="device-name">${escapeHtml(d.name || '未命名')}</div>
                 ${d.vendor ? vendorBadge(d.vendor) : ''}
+                ${statusHtml}
             </div>
             <div class="device-info">
                 <div class="device-info-row">
@@ -114,7 +117,7 @@ function showScanResults(devices) {
     const count = document.getElementById('scanCount');
 
     if (devices.length === 0) {
-        list.innerHTML = '<div class="empty-state"><p>未发现新设备</p></div>';
+        list.innerHTML = '<div class="empty-state"><p>未发现支持 WOL 的设备</p></div>';
     } else {
         count.textContent = devices.length;
         list.innerHTML = devices.map(function(d) {
@@ -127,6 +130,7 @@ function showScanResults(devices) {
                     <div class="scan-device-mac">${escapeHtml(d.mac)}</div>
                     <div class="scan-device-ip">${escapeHtml(d.ip)}</div>
                     ${d.vendor ? vendorBadge(d.vendor) : ''}
+                    <span class="status-badge status-online">支持 WOL</span>
                 </div>
                 <div class="scan-device-action">${btnHtml}</div>
             </div>

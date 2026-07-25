@@ -8,6 +8,28 @@ pub struct ScanResult {
     pub ip: String,
     pub mac: String,
     pub vendor: Option<String>,
+    pub wol_support: bool,
+}
+
+/// 已知虚拟网卡 OUI 前缀（不支持 WOL 魔术包）
+const VIRTUAL_OUI: &[&str] = &[
+    "005056", "000C29", "001C42", "0050B6", // VMware
+    "080027",                               // VirtualBox
+    "00155D", "0003FF",                     // Hyper-V
+    "525400",                               // QEMU/KVM
+    "00163E",                               // Xen
+];
+
+fn check_wol_support(mac: &str) -> bool {
+    let prefix: String = mac
+        .chars()
+        .filter(|c| c.is_ascii_hexdigit())
+        .collect::<String>()
+        .to_uppercase();
+    if prefix.len() < 6 {
+        return false;
+    }
+    !VIRTUAL_OUI.contains(&&prefix[..6])
 }
 
 fn vendor_for(mac: &str) -> Option<String> {
@@ -47,14 +69,21 @@ pub fn scan_network() -> Result<Vec<ScanResult>, String> {
 
     let mut results = read_arp_table()?;
 
-    // 过滤多播/回环地址，基于 MAC 去重
+    // 标记 WOL 支持并过滤
+    for r in results.iter_mut() {
+        r.wol_support = check_wol_support(&r.mac);
+    }
+
+    // 过滤多播/回环地址，基于 MAC 去重，只保留支持 WOL 的设备
     let mut seen = std::collections::HashSet::new();
     results.retain(|r| {
+        if !r.wol_support {
+            return false;
+        }
         let octets: Vec<u8> = r.ip.split('.').filter_map(|s| s.parse().ok()).collect();
         if octets.len() != 4 {
             return false;
         }
-        // 跳过多播 (224+) 和回环 (127)
         if octets[0] >= 224 || octets[0] == 127 {
             return false;
         }
@@ -90,6 +119,7 @@ fn read_arp_table() -> Result<Vec<ScanResult>, String> {
                 ip: ip_addr.to_string(),
                 mac: mac.clone(),
                 vendor: vendor_for(&mac),
+                wol_support: false,
             });
         }
     }
@@ -124,6 +154,7 @@ fn read_arp_table() -> Result<Vec<ScanResult>, String> {
                         ip: ip_addr.to_string(),
                         mac: mac_normalized.clone(),
                         vendor: vendor_for(&mac_normalized),
+                        wol_support: false,
                     });
                 }
             }

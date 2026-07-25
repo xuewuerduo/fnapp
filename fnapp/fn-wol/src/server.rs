@@ -103,7 +103,21 @@ fn handle_request(mut request: tiny_http::Request, store: &Arc<Mutex<DeviceStore
 
         ("GET", "/api/devices") => {
             let store = store.lock().unwrap();
-            let json = serde_json::to_string(store.list()).unwrap_or_else(|_| "[]".to_string());
+            let now = current_time();
+            let devices: Vec<_> = store.list().iter().map(|d| {
+                let online = d.last_seen.as_deref().and_then(|t| t.parse::<u64>().ok())
+                    .map(|t| now.parse::<u64>().ok().map(|n| n < t + 300).unwrap_or(false))
+                    .unwrap_or(false);
+                serde_json::json!({
+                    "mac": d.mac,
+                    "ip": d.ip,
+                    "name": d.name,
+                    "vendor": d.vendor,
+                    "last_seen": d.last_seen,
+                    "online": online
+                })
+            }).collect();
+            let json = serde_json::to_string(&devices).unwrap_or_else(|_| "[]".to_string());
             let _ = request.respond(json_response(200, &json));
         }
 
@@ -162,7 +176,8 @@ fn handle_request(mut request: tiny_http::Request, store: &Arc<Mutex<DeviceStore
                         "ip": r.ip,
                         "mac": r.mac,
                         "vendor": r.vendor,
-                        "exists": exists
+                        "exists": exists,
+                        "wol_support": r.wol_support
                     })
                 }).collect();
                 let _ = store.save();
