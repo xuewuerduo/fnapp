@@ -1,8 +1,9 @@
-name: Build
+name: Build fn-wol
 
 on:
   push:
     tags: ['fn-wol-v*']
+    paths: ['fnapp/fn-wol/**']
   workflow_dispatch:
 
 permissions:

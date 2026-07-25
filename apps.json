@@ -1,0 +1,17 @@
+{
+  "apps": [
+    {
+      "name": "fn-wol",
+      "display_name": "WOL 远程唤醒",
+      "description": "轻量级局域网远程唤醒工具，一键扫描、添加、唤醒局域网设备",
+      "version": "v0.1.1",
+      "platforms": ["amd64", "arm64"],
+      "package_url": {
+        "amd64": "https://github.com/xuewuerduo/fnapp/releases/download/fn-wol-v0.1.1/fn-wol-amd64.fpk",
+        "arm64": "https://github.com/xuewuerduo/fnapp/releases/download/fn-wol-v0.1.1/fn-wol-arm64.fpk"
+      },
+      "path": "fnapp/fn-wol",
+      "type": "native"
+    }
+  ]
+}
