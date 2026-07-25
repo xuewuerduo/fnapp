@@ -2,6 +2,7 @@ name: Build fn-wol
 
 on:
   push:
+    branches: ['master']
     tags: ['fn-wol-v*']
     paths: ['fnapp/fn-wol/**']
   workflow_dispatch:
