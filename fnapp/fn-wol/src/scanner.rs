@@ -11,7 +11,6 @@ pub struct ScanResult {
     pub wol_support: bool,
 }
 
-/// 已知虚拟网卡 OUI 前缀（不支持 WOL 魔术包）
 const VIRTUAL_OUI: &[&str] = &[
     "005056", "000C29", "001C42", "0050B6", // VMware
     "080027",                               // VirtualBox
@@ -36,17 +35,94 @@ fn vendor_for(mac: &str) -> Option<String> {
     oui::lookup_vendor_local(mac).map(|s| s.to_string())
 }
 
-/// 扫描局域网在线设备
-/// 1. 获取本机网段
-/// 2. 并发发送 UDP 包触发 ARP 解析
-/// 3. 读取系统 ARP 表获取 IP-MAC 映射
+fn send_udp_probes(ips: &[String]) {
+    for ip in ips {
+        if let Ok(sock) = UdpSocket::bind("0.0.0.0:0") {
+            let _ = sock.set_read_timeout(Some(Duration::from_millis(10)));
+            let _ = sock.send_to(&[0u8], format!("{}:9", ip));
+        }
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn read_arp_pairs() -> Result<Vec<(String, String)>, String> {
+    let arp_content = std::fs::read_to_string("/proc/net/arp")
+        .map_err(|e| format!("读取 ARP 表失败: {}", e))?;
+
+    let mut pairs = Vec::new();
+    for (i, line) in arp_content.lines().enumerate() {
+        if i == 0 {
+            continue;
+        }
+        let fields: Vec<&str> = line.split_whitespace().collect();
+        if fields.len() < 4 {
+            continue;
+        }
+        let ip_addr = fields[0];
+        let mac_addr = fields[3];
+
+        if mac_addr == "00:00:00:00:00:00" || mac_addr == "FF:FF:FF:FF:FF:FF" {
+            continue;
+        }
+        if mac_addr.contains(':') {
+            pairs.push((ip_addr.to_string(), mac_addr.to_lowercase()));
+        }
+    }
+
+    Ok(pairs)
+}
+
+#[cfg(target_os = "windows")]
+fn read_arp_pairs() -> Result<Vec<(String, String)>, String> {
+    use std::process::Command;
+
+    let output = Command::new("arp")
+        .arg("-a")
+        .output()
+        .map_err(|e| format!("执行 arp 命令失败: {}", e))?;
+
+    let content = String::from_utf8_lossy(&output.stdout);
+
+    let mut pairs = Vec::new();
+    for line in content.lines() {
+        let fields: Vec<&str> = line.split_whitespace().collect();
+        if fields.len() >= 2 {
+            let ip_addr = fields[0];
+            let mac_addr = fields[1];
+
+            if mac_addr.contains('-') && mac_addr.len() == 17 {
+                let mac_normalized = mac_addr.to_lowercase().replace('-', ":");
+                if mac_normalized != "00:00:00:00:00:00"
+                    && mac_normalized != "ff:ff:ff:ff:ff:ff"
+                {
+                    pairs.push((ip_addr.to_string(), mac_normalized));
+                }
+            }
+        }
+    }
+
+    Ok(pairs)
+}
+
+fn read_arp_table() -> Result<Vec<ScanResult>, String> {
+    let pairs = read_arp_pairs()?;
+    Ok(pairs
+        .into_iter()
+        .map(|(ip, mac)| ScanResult {
+            ip,
+            mac: mac.clone(),
+            vendor: vendor_for(&mac),
+            wol_support: false,
+        })
+        .collect())
+}
+
 pub fn scan_network() -> Result<Vec<ScanResult>, String> {
     let (ip, netmask) = get_local_network()
         .ok_or("无法获取本机网络信息，请检查网络连接")?;
 
     let range = get_scan_range(ip, netmask);
 
-    // 并发发送 UDP 包，触发内核 ARP 解析
     let handles: Vec<_> = range
         .iter()
         .map(|target_ip| {
@@ -64,17 +140,14 @@ pub fn scan_network() -> Result<Vec<ScanResult>, String> {
         let _ = h.join();
     }
 
-    // 等待 ARP 表更新
     std::thread::sleep(Duration::from_millis(1500));
 
     let mut results = read_arp_table()?;
 
-    // 标记 WOL 支持并过滤
     for r in results.iter_mut() {
         r.wol_support = check_wol_support(&r.mac);
     }
 
-    // 过滤多播/回环地址，基于 MAC 去重，只保留支持 WOL 的设备
     let mut seen = std::collections::HashSet::new();
     results.retain(|r| {
         if !r.wol_support {
@@ -93,73 +166,20 @@ pub fn scan_network() -> Result<Vec<ScanResult>, String> {
     Ok(results)
 }
 
-#[cfg(target_os = "linux")]
-fn read_arp_table() -> Result<Vec<ScanResult>, String> {
-    let arp_content = std::fs::read_to_string("/proc/net/arp")
-        .map_err(|e| format!("读取 ARP 表失败: {}", e))?;
+pub fn check_online_presence(devices: &[(String, String)]) -> Result<Vec<(String, bool)>, String> {
+    let ips: Vec<String> = devices.iter().map(|(_, ip)| ip.clone()).collect();
 
-    let mut results = Vec::new();
-    for (i, line) in arp_content.lines().enumerate() {
-        if i == 0 {
-            continue;
-        }
-        let fields: Vec<&str> = line.split_whitespace().collect();
-        if fields.len() < 4 {
-            continue;
-        }
-        let ip_addr = fields[0];
-        let mac_addr = fields[3];
+    send_udp_probes(&ips);
 
-        if mac_addr == "00:00:00:00:00:00" || mac_addr == "FF:FF:FF:FF:FF:FF" {
-            continue;
-        }
-        if mac_addr.contains(':') {
-            let mac = mac_addr.to_lowercase();
-            results.push(ScanResult {
-                ip: ip_addr.to_string(),
-                mac: mac.clone(),
-                vendor: vendor_for(&mac),
-                wol_support: false,
-            });
-        }
-    }
+    std::thread::sleep(Duration::from_millis(1500));
 
-    Ok(results)
-}
+    let arp_entries = read_arp_pairs()?;
 
-#[cfg(target_os = "windows")]
-fn read_arp_table() -> Result<Vec<ScanResult>, String> {
-    use std::process::Command;
-
-    let output = Command::new("arp")
-        .arg("-a")
-        .output()
-        .map_err(|e| format!("执行 arp 命令失败: {}", e))?;
-
-    let content = String::from_utf8_lossy(&output.stdout);
-
-    let mut results = Vec::new();
-    for line in content.lines() {
-        let fields: Vec<&str> = line.split_whitespace().collect();
-        if fields.len() >= 2 {
-            let ip_addr = fields[0];
-            let mac_addr = fields[1];
-
-            if mac_addr.contains('-') && mac_addr.len() == 17 {
-                let mac_normalized = mac_addr.to_lowercase().replace('-', ":");
-                if mac_normalized != "00:00:00:00:00:00"
-                    && mac_normalized != "ff:ff:ff:ff:ff:ff"
-                {
-                    results.push(ScanResult {
-                        ip: ip_addr.to_string(),
-                        mac: mac_normalized.clone(),
-                        vendor: vendor_for(&mac_normalized),
-                        wol_support: false,
-                    });
-                }
-            }
-        }
-    }
-
-    Ok(results)
+    Ok(devices
+        .iter()
+        .map(|(mac, ip)| {
+            let found = arp_entries.iter().any(|(aip, amac)| aip == ip && amac == mac);
+            (mac.clone(), found)
+        })
+        .collect())
 }

@@ -14,8 +14,35 @@ async function loadDevices() {
         const res = await fetch(`${API}/devices`);
         const devices = await res.json();
         renderDevices(devices);
+        checkOnlineStatus();
+        if (!window._checkInterval && devices.length > 0) {
+            window._checkInterval = setInterval(checkOnlineStatus, 30000);
+        }
     } catch (e) {
         showToast('加载设备列表失败', 'error');
+    }
+}
+
+async function checkOnlineStatus() {
+    try {
+        const res = await fetch(`${API}/check-online`, { method: 'POST' });
+        const data = await res.json();
+        if (!data.results) return;
+        data.results.forEach(function(r) {
+            var cards = document.querySelectorAll('#deviceList .device-card');
+            for (var i = 0; i < cards.length; i++) {
+                if (cards[i].dataset.mac === r.mac) {
+                    var badge = cards[i].querySelector('.status-badge');
+                    if (badge) {
+                        badge.className = 'status-badge ' + (r.online ? 'status-online' : 'status-offline');
+                        badge.textContent = r.online ? '在线' : '未检测';
+                    }
+                    break;
+                }
+            }
+        });
+    } catch (e) {
+        // 静默失败，等下次轮询
     }
 }
 
@@ -31,6 +58,10 @@ function renderDevices(devices) {
                 <p class="hint">扫描局域网或手动添加设备</p>
             </div>
         `;
+        if (window._checkInterval) {
+            clearInterval(window._checkInterval);
+            window._checkInterval = null;
+        }
         return;
     }
 
@@ -130,7 +161,6 @@ function showScanResults(devices) {
                     <div class="scan-device-mac">${escapeHtml(d.mac)}</div>
                     <div class="scan-device-ip">${escapeHtml(d.ip)}</div>
                     ${d.vendor ? vendorBadge(d.vendor) : ''}
-                    <span class="status-badge status-online">支持 WOL</span>
                 </div>
                 <div class="scan-device-action">${btnHtml}</div>
             </div>

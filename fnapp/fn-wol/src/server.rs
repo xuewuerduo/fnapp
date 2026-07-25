@@ -161,6 +161,30 @@ fn handle_request(mut request: tiny_http::Request, store: &Arc<Mutex<DeviceStore
             }
         }
 
+        ("POST", "/api/check-online") => {
+            let guard = store.lock().unwrap();
+            let devices: Vec<(String, String)> = guard.list().iter()
+                .filter_map(|d| d.ip.clone().map(|ip| (d.mac.clone(), ip)))
+                .collect();
+            drop(guard);
+
+            let results = scanner::check_online_presence(&devices).unwrap_or_default();
+            let online_map: std::collections::HashMap<&str, bool> = results.iter()
+                .map(|(mac, online)| (mac.as_str(), *online))
+                .collect();
+
+            let guard = store.lock().unwrap();
+            let json_results: Vec<_> = guard.list().iter().map(|d| {
+                let online = d.ip.as_ref()
+                    .and_then(|_ip| online_map.get(d.mac.as_str()).copied())
+                    .unwrap_or(false);
+                serde_json::json!({ "mac": d.mac, "online": online })
+            }).collect();
+            drop(guard);
+            let json = serde_json::json!({ "results": json_results }).to_string();
+            let _ = request.respond(json_response(200, &json));
+        }
+
         ("POST", "/api/scan") => match scanner::scan_network() {
             Ok(results) => {
                 let now = current_time();
@@ -176,8 +200,7 @@ fn handle_request(mut request: tiny_http::Request, store: &Arc<Mutex<DeviceStore
                         "ip": r.ip,
                         "mac": r.mac,
                         "vendor": r.vendor,
-                        "exists": exists,
-                        "wol_support": r.wol_support
+                        "exists": exists
                     })
                 }).collect();
                 let _ = store.save();
