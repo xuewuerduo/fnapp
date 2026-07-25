@@ -2,3 +2,8 @@
 fnapp/*/target/
 wol_devices.json
 *.exe
+*.fpk
+/fpk_app/
+/fpk_old/
+/fpk_test/
+/oui.csv
