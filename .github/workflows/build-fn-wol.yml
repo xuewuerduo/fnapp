@@ -53,7 +53,7 @@ jobs:
 
       - name: Download fnpack
         run: |
-          curl -fL --retry 3 --connect-timeout 10 --max-time 60 "${{ matrix.fnpack_url }}" -o /tmp/fnpack
+          curl -fLk --retry 3 --connect-timeout 10 --max-time 60 "${{ matrix.fnpack_url }}" -o /tmp/fnpack
           chmod +x /tmp/fnpack
           file /tmp/fnpack
 
