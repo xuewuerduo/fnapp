@@ -22,11 +22,9 @@ jobs:
           - target: aarch64-unknown-linux-musl
             arch: arm64
             platform: arm
-            fnpack_url: https://static2.fnnas.com/fnpack/fnpack-1.2.1-linux-amd64
           - target: x86_64-unknown-linux-musl
             arch: amd64
             platform: x86
-            fnpack_url: https://static2.fnnas.com/fnpack/fnpack-1.2.1-linux-amd64
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,26 +50,51 @@ jobs:
       - name: Build Rust binary
         run: cargo zigbuild --release --target ${{ matrix.target }}
 
-      - name: Setup fnOS pack dir
+      - name: Stage files
         run: |
+          mkdir -p /tmp/fpk-build
+          mkdir -p /tmp/fpk-build/cmd
+          mkdir -p /tmp/fpk-build/config
+          mkdir -p /tmp/fpk-build/wizard
+
+          # Copy binary and set permissions
           cp target/${{ matrix.target }}/release/fn-wol fnos-pack/app/bin/fn-wol
           chmod +x fnos-pack/app/bin/fn-wol
           chmod +x fnos-pack/cmd/*
 
-      - name: Set platform in manifest
-        run: |
-          sed -i "s/^platform=.*/platform=${{ matrix.platform }}/" fnos-pack/manifest
+          # 1. Pack app.tgz (only app/ contents)
+          cd fnos-pack/app
+          tar czf /tmp/fpk-build/app.tgz .
+          cd ../../
 
-      - name: Download fnpack
-        run: |
-          curl -fLk --retry 3 --connect-timeout 10 --max-time 60 "${{ matrix.fnpack_url }}" -o /tmp/fnpack
-          chmod +x /tmp/fnpack
-          file /tmp/fnpack
+          # 2. Copy lifecycle scripts
+          cp -r fnos-pack/cmd/* /tmp/fpk-build/cmd/
+          chmod +x /tmp/fpk-build/cmd/*
+
+          # 3. Copy config
+          cp fnos-pack/config/privilege /tmp/fpk-build/config/
+          cp fnos-pack/config/resource /tmp/fpk-build/config/
+
+          # 4. Copy wizard
+          cp fnos-pack/wizard/install /tmp/fpk-build/wizard/
+          cp fnos-pack/wizard/config /tmp/fpk-build/wizard/
+
+          # 5. Copy icons
+          cp fnos-pack/ICON.PNG /tmp/fpk-build/
+          cp fnos-pack/ICON_256.PNG /tmp/fpk-build/
+
+          # 6. Copy manifest with platform set
+          sed "s/^platform=.*/platform=${{ matrix.platform }}/" fnos-pack/manifest > /tmp/fpk-build/manifest
+
+          # 7. Calculate checksum and write to manifest
+          CHECKSUM=$(md5sum /tmp/fpk-build/app.tgz | awk '{print $1}')
+          echo "checksum = $CHECKSUM" >> /tmp/fpk-build/manifest
 
       - name: Build .fpk
         run: |
-          /tmp/fnpack build --directory fnos-pack
-          mv fn-wol.fpk fn-wol-${{ matrix.arch }}.fpk
+          cd /tmp/fpk-build
+          tar czf ${{ github.workspace }}/fnapp/fn-wol/fn-wol-${{ matrix.arch }}.fpk .
+          echo "FPK size: $(du -h ${{ github.workspace }}/fnapp/fn-wol/fn-wol-${{ matrix.arch }}.fpk | awk '{print $1}')"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
