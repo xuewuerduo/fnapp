@@ -56,7 +56,7 @@ jobs:
         run: |
           cp target/${{ matrix.target }}/release/fn-wol fnos-pack/app/bin/fn-wol
           chmod +x fnos-pack/app/bin/fn-wol
-          chmod +x fnos-pack/cmd/main
+          chmod +x fnos-pack/cmd/*
 
       - name: Set platform in manifest
         run: |
