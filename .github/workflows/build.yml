@@ -20,11 +20,11 @@ jobs:
           - target: aarch64-unknown-linux-musl
             arch: arm64
             platform: arm
-            fnpack_url: https://static2.fnnas.com/fnpack/fnpack-1.2.3-linux-arm64
+            fnpack_url: https://static2.fnnas.com/fnpack/fnpack-1.2.1-linux-arm64
           - target: x86_64-unknown-linux-musl
             arch: amd64
             platform: x86
-            fnpack_url: https://static2.fnnas.com/fnpack/fnpack-1.2.3-linux-amd64
+            fnpack_url: https://static2.fnnas.com/fnpack/fnpack-1.2.1-linux-amd64
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,8 +52,9 @@ jobs:
 
       - name: Download fnpack
         run: |
-          curl -sL "${{ matrix.fnpack_url }}" -o /tmp/fnpack
+          curl -fL --retry 3 --connect-timeout 10 --max-time 60 "${{ matrix.fnpack_url }}" -o /tmp/fnpack
           chmod +x /tmp/fnpack
+          file /tmp/fnpack
 
       - name: Build .fpk
         run: |
