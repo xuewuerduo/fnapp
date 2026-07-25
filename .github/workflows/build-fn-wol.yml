@@ -40,9 +40,12 @@ jobs:
 
       - name: Install zig
         run: |
+          set -o pipefail
           mkdir -p /tmp/zig
-          curl -fsSL https://ziglang.org/download/0.16.0/zig-x86_64-linux-0.16.0.tar.xz | tar xJ -C /tmp/zig --strip-components=1
+          curl -fsSLo /tmp/zig.tar.xz https://ziglang.org/download/0.16.0/zig-x86_64-linux-0.16.0.tar.xz
+          tar xf /tmp/zig.tar.xz --strip-components=1 -C /tmp/zig
           echo "/tmp/zig" >> $GITHUB_PATH
+          export PATH="/tmp/zig:$PATH"
           zig version
 
       - name: Build Rust binary
