@@ -36,8 +36,8 @@ function renderDevices(devices) {
 
     list.innerHTML = devices.map(function(d) {
         var statusHtml = d.online
-            ? '<span class="status-badge status-online">在线</span>'
-            : '<span class="status-badge status-offline">离线</span>';
+            ? '<span class="status-badge status-online" title="最近扫描时在线">在线</span>'
+            : '<span class="status-badge status-offline" title="最近扫描未检测到此设备">未检测</span>';
         return `
         <div class="device-card" data-mac="${escapeAttr(d.mac)}">
             <div class="device-header">
