@@ -11,5 +11,9 @@ fpk-extract/
 fan-extract/
 fan-app-extract/
 app-extract/
-fn-wol-test.fpk
+fpk-check/
+fan-source/
+fan-source.zip
+v0.1.9.fpk
 fan-control.fpk
+fn-wol-test.fpk

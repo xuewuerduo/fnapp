@@ -58,6 +58,7 @@ jobs:
           mkdir -p /tmp/fpk-build/wizard
 
           # Copy binary and set permissions
+          mkdir -p fnos-pack/app/bin
           cp target/${{ matrix.target }}/release/fn-wol fnos-pack/app/bin/fn-wol
           chmod +x fnos-pack/app/bin/fn-wol
           chmod +x fnos-pack/cmd/*
